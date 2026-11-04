@@ -215,3 +215,61 @@ co-residence or context for speed.
 **AMD `HIP error` / "gfx not supported".** Use a ROCm vLLM build for `gfx1151`, set
 `HSA_OVERRIDE_GFX_VERSION`, confirm `/dev/kfd` + `/dev/dri` are passed and the user
 is in the `video`/`render` groups.
+## 6. LiteLLM maxconfig
+
+### Overlay selection
+
+The gateway boots in one of two overlays, selected by `LITELLM_OVERLAY` (default
+`dev`):
+
+- `dev` - insecure-convenient: open boot (`master_key: sk-litellm-local-dev-change-me`),
+  full spend rows (bodies logged), budgets warn-and-continue.
+- `prod` - guardrails + content filter + spend verification; master key required, dev
+  override flag forbidden, alert webhook required.
+
+Switch by setting `LITELLM_OVERLAY=prod` in `.env` (compose passes it through).
+
+### Env var contract
+
+All knobs live in `.env` (copy `.env.example` to start). Every key carries a
+provenance comment (Turnstone default / LiteLLM built-in / OptiStack reference).
+Empty paid keys (`QWEN_PAID_API_KEY`, `GEMMA_PAID_API_KEY`) disable the paid tails
+cleanly - the paid model entries are removed at render time rather than left
+broken. `*_JSON` values are decoded by the entrypoint; malformed JSON refuses boot.
+
+### Guardrail behavior
+
+Three guardrails ship in the prod overlay:
+
+- `secrets-block` - `pre_call`, enforcing: AWS/GitHub/Slack/generic API key shapes
+  block the request (HTTP 400).
+- `pii-mask` - `pre_call`: email/SSN/phone/credit-card shapes are masked in the
+  outbound body.
+- `pii-audit` - `logging_only`, output scope: Turnstone-like keys / GitHub PATs /
+  AWS keys are recorded on the spend row without blocking.
+
+Guardrails fail open on parse errors and never produce a parsed `BLOCKED` verdict
+from malformed input. Custom patterns come from `GUARDRAIL_PATTERNS_JSON`.
+Demote/remove a guardrail via `LITELLM_SECRETS_GUARD` / `LITELLM_PII_GUARD` /
+`LITELLM_AUDIT_GUARD` (`off` removes the entry and names the removal in the boot
+log). Guardrails are transport-layer (LiteLLM), complementary to Turnstone's
+in-app checks - they do not replace them.
+
+### Version floor
+
+LiteLLM `>= 1.97.0` is required. The entrypoint asserts
+`importlib.metadata.version("litellm")` against the floor before boot and refuses
+with the running version + required feature list if below. Pin `LITELLM_TAG` to a
+semver `vX.Y.Z` (not `main-stable`); cosign verification is documented for
+cosign-equipped CI.
+
+### Dev/prod switch
+
+| | dev | prod |
+|---|---|---|
+| `LITELLM_MASTER_KEY` | empty OK (with override flag) | required, real key |
+| `LITELLM_DANGEROUSLY_PERMIT_WEAK_OR_UNSET_MASTER_KEY` | `true` | must be absent |
+| `LITELLM_ALERT_WEBHOOK_JSON` | `{}` | required (non-empty URL) |
+| message logging | on (full rows) | off (bodies redacted) |
+| spend rows | full (prompts stored) | cost-only |
+| guardrails | none | secrets-block + pii-mask + pii-audit |
