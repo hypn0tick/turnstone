@@ -349,7 +349,16 @@ class OpenAIChatCompletionsProvider:
         extra_headers: dict[str, str] | None = None,
         resolve_attachments: Callable[[list[str]], dict[str, Any]] | None = None,
         request_metrics_ref: list[ProviderRequestMetrics] | None = None,
+        user: str | None = None,
+        user_id: str | None = None,
+        team: str | None = None,
+        team_id: str | None = None,
+        tags: list[str] | None = None,
     ) -> Iterator[StreamChunk]:
+        if user is None:
+            user = user_id
+        if team is None:
+            team = team_id
         messages = materialize_attachments(messages, resolve_attachments)
         caps = capabilities or self.get_capabilities(model)
         messages = self._prepare_messages(messages)
@@ -371,6 +380,12 @@ class OpenAIChatCompletionsProvider:
         if extra_headers:
             refuse_credential_headers(extra_headers)
             kwargs["extra_headers"] = extra_headers
+        if user is not None:
+            kwargs["user"] = user
+        if team is not None:
+            kwargs["team"] = team
+        if tags is not None:
+            kwargs["tags"] = tags
 
         # Dedicated search models search even without an explicit option; an
         # operator can also enable search through the final request body. Both

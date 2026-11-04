@@ -710,7 +710,16 @@ class OpenAIResponsesProvider:
         extra_headers: dict[str, str] | None = None,
         resolve_attachments: Callable[[list[str]], dict[str, Any]] | None = None,
         request_metrics_ref: list[ProviderRequestMetrics] | None = None,
+        user: str | None = None,
+        user_id: str | None = None,
+        team: str | None = None,
+        team_id: str | None = None,
+        tags: list[str] | None = None,
     ) -> Iterator[StreamChunk]:
+        if user is None:
+            user = user_id
+        if team is None:
+            team = team_id
         messages = materialize_attachments(messages, resolve_attachments)
         if extra_params:
             log.debug("openai.responses: extra_params ignored (not supported by Responses API)")
@@ -730,6 +739,12 @@ class OpenAIResponsesProvider:
         if extra_headers:
             refuse_credential_headers(extra_headers)
             kwargs["extra_headers"] = extra_headers
+        if user is not None:
+            kwargs["user"] = user
+        if team is not None:
+            kwargs["team"] = team
+        if tags is not None:
+            kwargs["tags"] = tags
 
         refuse_aborted_request(cancel_ref)
         if request_metrics_ref is not None:
