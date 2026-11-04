@@ -174,6 +174,70 @@ default = "qwen"
   KV cheap) + a light **4B** reranker fit alongside qwen; the 8B reranker or
   gemma-4-E4B are the levers if you need to trade quality for memory.
 
+## Postgres — spend tracking, budgets, attribution
+
+LiteLLM optionally persists spend/usage to Postgres. Off by default in dev
+(fail-open); required in prod.
+
+### Dev (no database)
+
+Leave `DATABASE_URL` empty (and `POSTGRES_PASSWORD` empty). The gateway runs
+without spend tracking or budget enforcement; requests still flow. No `db` /
+`litellm-migrate` service is needed.
+
+### Prod (database required)
+
+1. Set `POSTGRES_PASSWORD` (and optionally `POSTGRES_USER` / `POSTGRES_DB`) in
+   `.env`. `DATABASE_URL` defaults to
+   `postgresql://litellm:${POSTGRES_PASSWORD}@db:5432/litellm`.
+2. Bring up the database, run migrations once, then the gateway:
+
+   ```sh
+   docker compose up -d db
+   docker compose run --rm litellm-migrate   # applies schema, exits 0 on success
+   docker compose up -d litellm
+   ```
+
+The `litellm` service waits for `db` healthy and the entrypoint probes the DB
+before exec. With `ALLOW_REQUESTS_ON_DB_UNAVAILABLE=false` (default) requests
+fail closed during an outage; set `true` for fail-open.
+
+### Migrations
+
+The schema is owned by LiteLLM. Apply it via the one-shot `litellm-migrate`
+service per upgrade (not per replica) to avoid races. Proxy instances do not
+auto-migrate in prod.
+
+### DB sizing
+
+Postgres sits on the auth path (cheap) and the accounting path (expensive —
+spend writes to key/user/team/org rows plus `LiteLLM_SpendLogs`).
+
+- Single-instance Turnstone (low RPS): 2 vCPU / 4 GB RAM / 20 GB SSD is plenty.
+- Storage tracks retention: ~1–2 KB per logged request (~10× with
+  `store_prompts_in_spend_logs`).
+- Batch spend writes with `PROXY_BATCH_WRITE_AT` (default 60 s) to avoid a DB
+  hot-spot.
+- Set `SPEND_LOG_RETENTION_DAYS` (default 30) to bound `LiteLLM_SpendLogs`.
+- More than one instance or worker: add Redis (rate limits/budgets are counted
+  per-process without it). Single-instance Turnstone does not need Redis.
+- Optional: built-in PgBouncer (port 6432,
+  `database_disable_prepared_statements: true`) for connection pooling at scale.
+  Off by default.
+
+### Env vars
+
+| Var | Default | Notes |
+|---|---|---|
+| `DATABASE_URL` | (empty) | empty = fail-open (no DB) |
+| `POSTGRES_PASSWORD` | (empty) | required in prod |
+| `POSTGRES_USER` | `litellm` | |
+| `POSTGRES_DB` | `litellm` | |
+| `PROXY_BATCH_WRITE_AT` | `60` | seconds |
+| `SPEND_LOG_RETENTION_DAYS` | `30` | |
+| `ALLOW_REQUESTS_ON_DB_UNAVAILABLE` | `false` | fail-open toggle |
+| `PGDATA` | `./pgdata` | host volume |
+
 ## Troubleshooting
 
 **`No available memory for the cache blocks` (a model won't start).** Its util
