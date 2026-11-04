@@ -1,2 +1,4 @@
 # LiteLLM gateway config - dev overlay (insecure-convenient).
 master_key: sk-litellm-local-dev-change-me
+litellm_settings:
+  max_budget: ${MAX_BUDGET_USD:-0}
