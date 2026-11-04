@@ -198,8 +198,6 @@ services:
         condition: service_healthy
       vllm-gemma:
         condition: service_healthy
-      db:
-        condition: service_healthy
     restart: unless-stopped
 
   # --- database : Postgres for LiteLLM spend tracking / budgets ---------------
@@ -217,14 +215,16 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    profiles: ["postgres"]
 
   # --- migrations : one-shot schema apply ------------------------------------
   litellm-migrate:
     image: ghcr.io/berriai/litellm:${LITELLM_TAG:-main-stable}
     command: ["python", "/app/litellm/proxy/prisma_migration.py"]
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://litellm:${POSTGRES_PASSWORD}@db:5432/litellm}
+      DATABASE_URL: ${DATABASE_URL:-}
     depends_on:
       db:
         condition: service_healthy
     restart: "no"
+    profiles: ["postgres"]
