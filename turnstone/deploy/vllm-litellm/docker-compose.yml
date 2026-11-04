@@ -187,10 +187,15 @@ services:
 
   # --- gateway : both chat API routes on :4000 -------------------------------
   litellm:
-    image: ghcr.io/berriai/litellm:${LITELLM_TAG:-main-stable}
+    image: ghcr.io/berriai/litellm:${LITELLM_TAG:-v1.97.0}
+    entrypoint: ["/litellm-entrypoint.sh"]
     command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_OVERLAY: ${LITELLM_OVERLAY:-dev}
     volumes:
       - ./litellm-config.yaml:/etc/litellm/config.yaml:ro
+      - ./litellm-entrypoint.sh:/litellm-entrypoint.sh:ro
+      - ./litellm-callbacks:/litellm-callbacks:ro
     ports:
       - "${LITELLM_PORT:-4000}:4000"
     depends_on:
