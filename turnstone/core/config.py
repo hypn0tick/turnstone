@@ -172,6 +172,16 @@ _CONFIG_MAP: dict[str, dict[str, str]] = {
         "sslkey": "db_sslkey",
         "listen_url": "db_listen_url",
     },
+    "spend": {
+        "budget_cap_usd": "budget_cap_usd",
+        "spend_tracking_enabled": "spend_tracking_enabled",
+        "team_id": "team_id",
+    },
+    "litellm": {
+        "budget_cap_usd": "budget_cap_usd",
+        "spend_tracking_enabled": "spend_tracking_enabled",
+        "team_id": "team_id",
+    },
     "judge": {
         "enabled": "judge_enabled",
         "model": "judge_model",
@@ -292,6 +302,93 @@ def get_rerank_instruction() -> str:
         cfg = load_config("tools").get("rerank_instruction", "").strip()
         _rerank_instruction = cfg or os.environ.get("TURNSTONE_RERANK_INSTRUCTION", "").strip()
     return _rerank_instruction or ""
+
+
+# -- Spend tracking (cached) ---------------------------------------------------
+
+_budget_cap_usd: float | None = None
+_budget_cap_usd_loaded: bool = False
+_spend_tracking_enabled: bool | None = None
+_spend_tracking_enabled_loaded: bool = False
+_team_id: str | None = None
+_team_id_loaded: bool = False
+
+
+def _spend_section() -> dict:
+    for section in ("spend", "litellm"):
+        data = load_config(section)
+        if isinstance(data, dict) and data:
+            return data
+    # Fall back to first non-empty of the two even if empty dict present.
+    for section in ("spend", "litellm"):
+        data = load_config(section)
+        if isinstance(data, dict):
+            return data
+    return {}
+
+
+def get_budget_cap_usd() -> float:
+    """Load the spend budget cap in USD (cached after first call).
+
+    Precedence: config.toml [spend] budget_cap_usd -> $TURNSTONE_BUDGET_CAP_USD
+    -> 0.0 (no cap).
+    """
+    global _budget_cap_usd, _budget_cap_usd_loaded
+    if not _budget_cap_usd_loaded:
+        _budget_cap_usd_loaded = True
+        cfg = _spend_section().get("budget_cap_usd", None)
+        if cfg is None or cfg == "":
+            env_val = os.environ.get("TURNSTONE_BUDGET_CAP_USD", "").strip()
+            if env_val:
+                try:
+                    _budget_cap_usd = float(env_val)
+                except ValueError:
+                    _budget_cap_usd = 0.0
+            else:
+                _budget_cap_usd = 0.0
+        else:
+            try:
+                _budget_cap_usd = float(cfg)
+            except (TypeError, ValueError):
+                _budget_cap_usd = 0.0
+    return _budget_cap_usd if _budget_cap_usd is not None else 0.0
+
+
+def get_spend_tracking_enabled() -> bool:
+    """Load whether spend tracking is enabled (cached after first call).
+
+    Precedence: config.toml [spend] spend_tracking_enabled -> False.
+    """
+    global _spend_tracking_enabled, _spend_tracking_enabled_loaded
+    if not _spend_tracking_enabled_loaded:
+        _spend_tracking_enabled_loaded = True
+        cfg = _spend_section().get("spend_tracking_enabled", False)
+        if isinstance(cfg, bool):
+            _spend_tracking_enabled = cfg
+        elif isinstance(cfg, str):
+            _spend_tracking_enabled = cfg.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            _spend_tracking_enabled = bool(cfg)
+    return bool(_spend_tracking_enabled)
+
+
+def get_team_id() -> str | None:
+    """Load the LiteLLM team id (cached after first call).
+
+    Precedence: config.toml [spend] team_id -> $TURNSTONE_TEAM_ID -> None.
+    """
+    global _team_id, _team_id_loaded
+    if not _team_id_loaded:
+        _team_id_loaded = True
+        cfg = _spend_section().get("team_id", "")
+        if isinstance(cfg, str):
+            cfg = cfg.strip()
+        if cfg:
+            _team_id = str(cfg)
+        else:
+            env_val = os.environ.get("TURNSTONE_TEAM_ID", "").strip()
+            _team_id = env_val if env_val else None
+    return _team_id
 
 
 def nonneg_float(val: str) -> float:

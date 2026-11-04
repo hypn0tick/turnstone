@@ -217,3 +217,12 @@
 [server]
 # max_workstreams = 50         # Maximum concurrent workstreams per node
                                # env: TURNSTONE_MAX_WORKSTREAMS
+
+
+# --- Spend tracking (LiteLLM) ---
+
+[spend]
+# budget_cap_usd = 0.0         # USD cap for spend tracking; 0 = no cap
+                               # env: TURNSTONE_BUDGET_CAP_USD
+# spend_tracking_enabled = false # Enable LiteLLM spend tracking
+# team_id = ""                 # LiteLLM team id; env: TURNSTONE_TEAM_ID
