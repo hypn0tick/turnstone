@@ -1,0 +1,21 @@
+# LiteLLM gateway config (prod overlay) — base config plus Postgres-backed
+# spend tracking, budget enforcement, and per-user attribution.
+model_list:
+  - model_name: qwen3.6-27b
+    litellm_params:
+      model: anthropic/qwen3.6-27b
+      api_base: http://vllm-qwen:8000
+      api_key: dummy
+  - model_name: gemma-4-12b
+    litellm_params:
+      model: openai/gemma-4-12b
+      api_base: http://vllm-gemma:8000/v1
+      api_key: dummy
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  database_url: ${DATABASE_URL}
+  proxy_batch_write_at: ${PROXY_BATCH_WRITE_AT:-60}
+  allow_requests_on_db_unavailable: ${ALLOW_REQUESTS_ON_DB_UNAVAILABLE:-false}
