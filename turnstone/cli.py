@@ -1518,6 +1518,33 @@ def _start_persistence_retries(manager: SessionManager) -> threading.Event:
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "spend":
+        from turnstone.spend import get_session_spend, get_user_spend
+
+        args = sys.argv[2:]
+        if not args or args[0] != "show":
+            print("Usage: turnstone spend show [--session ID] [--user ID]")
+            return
+        session_id = None
+        user_id = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--session" and i + 1 < len(args):
+                session_id = args[i + 1]
+                i += 2
+                continue
+            if args[i] == "--user" and i + 1 < len(args):
+                user_id = args[i + 1]
+                i += 2
+                continue
+            i += 1
+        if session_id:
+            print(f"session {session_id}: ${get_session_spend(session_id):.6f}")
+        if user_id:
+            print(f"user {user_id}: ${get_user_spend(user_id):.6f}")
+        if not session_id and not user_id:
+            print("Usage: turnstone spend show --session ID | --user ID")
+        return
     parser = argparse.ArgumentParser(
         description="Interactive CLI for OpenAI-compatible models with tool calling.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
