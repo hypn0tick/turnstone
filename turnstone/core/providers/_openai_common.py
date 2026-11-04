@@ -61,6 +61,10 @@ _UPSTREAM_TRANSIENT_CODES = frozenset(
     {"server_error", "internal_server_error", "overloaded_error", "service_unavailable"}
 )
 
+_UPSTREAM_BUDGET_CODES = frozenset(
+    {"budget_exceeded", "budget_exceeded_error", "insufficient_budget", "payment_required"}
+)
+
 
 class UpstreamResponseError(ProviderResponseError):
     """An OpenAI-compatible endpoint returned JSON instead of an SSE stream."""
@@ -193,6 +197,9 @@ def _upstream_error_class(
     code: str, error_type: str, upstream_status: int | None
 ) -> type[UpstreamResponseError]:
     identifiers = {value.casefold() for value in (code, error_type) if value}
+    if upstream_status == 402 or identifiers & _UPSTREAM_BUDGET_CODES:
+        from turnstone.core.providers._protocol import BudgetExceededError
+        return BudgetExceededError
     if upstream_status == 429 or identifiers & _UPSTREAM_RATE_LIMIT_CODES:
         return UpstreamRateLimitError
     if (

@@ -413,7 +413,12 @@ class OpenAIChatCompletionsProvider:
             tool_count=len(tools) if tools else 0,
         )
         refuse_aborted_request(cancel_ref)
-        stream = client.chat.completions.create(**kwargs)
+        try:
+            stream = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            from turnstone.core.providers._protocol import raise_if_budget_exceeded
+            raise_if_budget_exceeded(exc)
+            raise
         reject_non_stream_response(stream, cancel_ref=cancel_ref)
         if cancel_ref is not None:
             cancel_ref.append(stream)

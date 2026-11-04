@@ -196,6 +196,12 @@ class ContextWindowExceededError(ProviderResponseError):
     """
 
 
+class BudgetExceededError(ProviderResponseError):
+    def __init__(self, *args, **kwargs):
+        self.status_code = kwargs.get('status_code')
+        super().__init__(*args if args else ('budget exceeded',))
+
+
 class IncompleteStreamError(ProviderResponseError):
     """The stream ended without any terminal/finish signal.
 
@@ -1140,3 +1146,25 @@ class LLMProvider(Protocol):
         blocks for the implementing provider.
         """
         ...
+
+
+def raise_if_budget_exceeded(exc):
+    status = getattr(exc, 'status_code', None)
+    if not isinstance(status, int) or isinstance(status, bool):
+        resp = getattr(exc, 'response', None)
+        status = getattr(resp, 'status_code', None)
+    if not isinstance(status, int) or isinstance(status, bool):
+        return
+    if status not in (402, 429):
+        return
+    text_parts = [str(exc)]
+    body = getattr(exc, 'body', None)
+    if body is not None:
+        text_parts.append(str(body))
+    message = getattr(exc, 'message', None)
+    if isinstance(message, str):
+        text_parts.append(message)
+    haystack = ' '.join(text_parts).lower()
+    if status != 402 and 'budget' not in haystack:
+        return
+    raise BudgetExceededError('budget exceeded') from exc

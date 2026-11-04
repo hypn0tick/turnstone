@@ -13,6 +13,7 @@ from turnstone.core.providers._openai_chat import OpenAIChatCompletionsProvider
 from turnstone.core.providers._openai_responses import OpenAIResponsesProvider
 from turnstone.core.providers._protocol import (
     CompletionResult,
+    BudgetExceededError,
     ContextWindowExceededError,
     IncompleteStreamError,
     LLMProvider,
@@ -26,6 +27,7 @@ from turnstone.core.providers._protocol import (
     refuse_credential_headers,
     thinking_off_template_kwargs,
     transport_guarded,
+    raise_if_budget_exceeded,
 )
 from turnstone.core.providers._xai import XAI_DEFAULT_BASE_URL, XAIProvider
 
@@ -33,6 +35,7 @@ __all__ = [
     "ANTHROPIC_PROTOCOL_PROVIDERS",
     "ANTHROPIC_WORKSPACE_HEADER",
     "CompletionResult",
+    "BudgetExceededError",
     "ContextWindowExceededError",
     "IncompleteStreamError",
     "LLMProvider",

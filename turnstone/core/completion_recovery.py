@@ -149,6 +149,7 @@ BACKEND_RATE_LIMIT_EXC_NAMES: frozenset[str] = frozenset(
     {"RateLimitError", "UpstreamRateLimitError"}
 )
 BACKEND_TRANSIENT_EXC_NAMES: frozenset[str] = frozenset({"UpstreamTransientError"})
+BACKEND_BUDGET_EXC_NAMES: frozenset[str] = frozenset({"BudgetExceededError"})
 # Backend-reported stream errors stay OUT of ``BACKEND_KNOWN_EXC_NAMES``:
 # their messages can carry a real context-window rejection, which
 # ``is_context_overflow`` must see before the formatter categorizes them.  The
@@ -178,6 +179,7 @@ BACKEND_KNOWN_EXC_NAMES: frozenset[str] = (
     | BACKEND_AUTH_EXC_NAMES
     | BACKEND_RATE_LIMIT_EXC_NAMES
     | BACKEND_TRANSIENT_EXC_NAMES
+    | BACKEND_BUDGET_EXC_NAMES
     | BACKEND_STREAM_EXC_NAMES
 )
 # The adapter-raised overflow: a SUCCESSFUL response whose stop reason says

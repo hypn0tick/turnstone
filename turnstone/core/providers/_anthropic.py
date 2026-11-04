@@ -1557,7 +1557,12 @@ class AnthropicProvider:
                 )
             )
 
-        manager = client.messages.stream(**kwargs)
+        try:
+            manager = client.messages.stream(**kwargs)
+        except Exception as exc:
+            from turnstone.core.providers._protocol import raise_if_budget_exceeded
+            raise_if_budget_exceeded(exc)
+            raise
         refuse_aborted_request(cancel_ref)
         try:
             stream = manager.__enter__()

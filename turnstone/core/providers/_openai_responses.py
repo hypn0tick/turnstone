@@ -780,7 +780,12 @@ class OpenAIResponsesProvider:
             else None
         )
         refuse_aborted_request(cancel_ref)
-        stream = client.responses.create(**kwargs)
+        try:
+            stream = client.responses.create(**kwargs)
+        except Exception as exc:
+            from turnstone.core.providers._protocol import raise_if_budget_exceeded
+            raise_if_budget_exceeded(exc)
+            raise
         reject_non_stream_response(stream, cancel_ref=cancel_ref)
         if cancel_ref is not None:
             cancel_ref.append(stream)
