@@ -1,0 +1,63 @@
+# LiteLLM gateway config - prod overlay (guardrails + content filter).
+guardrails:
+  - guardrail_name: "secrets-block"
+    litellm_params:
+      guardrail: litellm_content_filter
+      mode: "pre_call"
+      default_on: true
+      patterns:
+        - pattern_type: "prebuilt"
+          pattern_name: "aws_access_key"
+          action: "BLOCK"
+        - pattern_type: "prebuilt"
+          pattern_name: "aws_secret_key"
+          action: "BLOCK"
+        - pattern_type: "prebuilt"
+          pattern_name: "github_token"
+          action: "BLOCK"
+        - pattern_type: "prebuilt"
+          pattern_name: "slack_token"
+          action: "BLOCK"
+        - pattern_type: "prebuilt"
+          pattern_name: "generic_api_key"
+          action: "BLOCK"
+  - guardrail_name: "pii-mask"
+    litellm_params:
+      guardrail: litellm_content_filter
+      mode: "pre_call"
+      default_on: true
+      patterns:
+        - pattern_type: "prebuilt"
+          pattern_name: "email"
+          action: "MASK"
+        - pattern_type: "prebuilt"
+          pattern_name: "us_ssn"
+          action: "MASK"
+        - pattern_type: "prebuilt"
+          pattern_name: "us_ssn_no_dash"
+          action: "MASK"
+        - pattern_type: "prebuilt"
+          pattern_name: "us_phone"
+          action: "MASK"
+        - pattern_type: "prebuilt"
+          pattern_name: "credit_card"
+          action: "MASK"
+  - guardrail_name: "pii-audit"
+    litellm_params:
+      guardrail: litellm_content_filter
+      mode: "logging_only"
+      logging_only_scope: "output"
+      default_on: true
+      patterns:
+        - pattern_type: "regex"
+          pattern: "sk-(proj-)?[A-Za-z0-9_-]{20,}"
+          name: "turnstone_like_keys"
+          action: "BLOCK"
+        - pattern_type: "regex"
+          pattern: "ghp_[A-Za-z0-9]{36}"
+          name: "github_pat_audit"
+          action: "BLOCK"
+        - pattern_type: "regex"
+          pattern: "AKIA[0-9A-Z]{16}"
+          name: "aws_key_audit"
+          action: "BLOCK"
